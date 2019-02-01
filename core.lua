@@ -8,8 +8,8 @@ XB.LSM = LibStub('LibSharedMedia-3.0');
 ----------------------------------------------------------------------------------------------------------
 -- Variables
 ----------------------------------------------------------------------------------------------------------
-XB.version = "3.0"
-XB.releaseType = "a"
+XB.version = "3.0.1"
+XB.releaseType = "alpha"
 
 XB.playerName = UnitName("player")
 XB.playerClass = select(2, UnitClass("player"))

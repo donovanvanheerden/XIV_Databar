@@ -1,10 +1,11 @@
 ## Interface: 80000
 ## Title: XIV_Databar
-## Author: Mikeprod
-## Version: 3.0.0
+## Author: @project-author@
+## Version: @project-version@
 ## Notes: Databar which is the continuation of the SX_Databar
 ## SavedVariables: XIVBarDB
 ## X-Issues: https://github.com/Mikeprod/XIV_Databar/issues
+## X-Curse-Project-ID: 103289
 
 embeds.xml
 db\ports.lua
