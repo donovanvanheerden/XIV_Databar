@@ -6,6 +6,7 @@
 ## SavedVariables: XIVBarDB
 ## X-Issues: https://github.com/Mikeprod/XIV_Databar/issues
 ## X-Curse-Project-ID: 103289
+## X-WoWI-ID: 24884
 
 embeds.xml
 db\ports.lua
