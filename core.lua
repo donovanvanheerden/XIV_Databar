@@ -51,6 +51,11 @@ XB.menuIcons = {
 	help = XB.mediaFold.."microbar\\help",
 }
 
+XB.systemIcons = {
+    fps = XB.mediaFold.."datatexts\\fps",
+    ping = XB.mediaFold.."datatexts\\ping"
+}
+
 XB.validAnchors = {
     CENTER = "CENTER",
     LEFT = "LEFT",

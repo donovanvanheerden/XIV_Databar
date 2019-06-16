@@ -1,4 +1,341 @@
-local AddOnName, XIVBar = ...;
+local addOnName, XB = ...;
+
+local System = XB:RegisterModule("System")
+
+----------------------------------------------------------------------------------------------------------
+-- Local variables
+----------------------------------------------------------------------------------------------------------
+local ccR,ccG,ccB = GetClassColor(XB.playerClass)
+local libTT
+local system_config
+local groupFrame, moduleFrames, moduleIcons, moduleTexts, moduleFunctions
+local moduleHovered = false
+local Bar, BarFrame
+local systemElements = {"fps", "ping"}
+
+moduleFrames, moduleIcons, moduleTexts = {}, {}, {}
+
+
+----------------------------------------------------------------------------------------------------------
+-- Private functions
+----------------------------------------------------------------------------------------------------------
+local addonMemoryCompare = function(a, b)
+  return a.memory > b.memory
+end
+
+local function formatMemoryValue(value)
+  local memoryValue = string.format("%.2f KB",value)
+
+  if value >= 1000 then
+    memoryValue = string.format("%.2f MB", value/1000)
+  elseif value >= 1000000 then
+    memoryValue = string.format("%.2f GB", value/1000000)
+  end
+  return memoryValue
+end
+
+local function tooltipHeader(tooltip, addonListLength)
+  tooltip:AddHeader('[|cff6699FF'.."Performance"..'|r]')
+  tooltip:AddLine(' ',' ')
+  if IsShiftKeyDown() then
+    tooltip:AddLine("|cff6699FFAddOns", "|cff6699FFMemory usage|r")
+  else
+    tooltip:AddLine("|cff6699FFTop "..addonListLength.." AddOns|r", "|cff6699FFMemory usage|r")
+  end
+  tooltip:AddLine("")
+end
+
+local function tooltipAddonsMemoryUsed(tooltip, addonListLength)
+  UpdateAddOnMemoryUsage()
+  local blizz = collectgarbage("count")
+  local addons = {}
+  local totalMemoryAddons = 0
+
+  for i=1, GetNumAddOns(), 1 do
+    local addonMemoryUsage = GetAddOnMemoryUsage(i)
+    totalMemoryAddons = totalMemoryAddons + addonMemoryUsage
+    if addonMemoryUsage > 0 then
+      table.insert(addons, {["addonName"] = GetAddOnInfo(i), ["memory"] = addonMemoryUsage})
+    end
+  end
+
+  table.sort(addons, addonMemoryCompare)
+
+  if IsShiftKeyDown() then
+    addonListLength = #addons
+  end
+
+  local addonRowDisplayed = 0 
+  for _, addonEntry in pairs(addons) do
+    if addonRowDisplayed < addonListLength then
+      tooltip:AddLine("|cffffff00"..addonEntry["addonName"].."|r", formatMemoryValue(addonEntry["memory"]))
+    end
+    addonRowDisplayed = addonRowDisplayed +1 
+  end
+
+  return blizz, totalMemoryAddons
+end
+
+local function tooltipFooter(tooltip, blizzMemory, addonsMemory)
+  tooltip:AddLine("")
+  tooltip:AddLine("")
+  tooltip:AddLine("|cffffff00Blizzard|r", formatMemoryValue(blizzMemory))
+  tooltip:AddLine("")
+  tooltip:AddLine("")
+  tooltip:AddLine("|cffffff00Total AddOns|r", formatMemoryValue(addonsMemory))
+  tooltip:AddLine("|cffffff00Total incl. Blizzard|r", formatMemoryValue(addonsMemory+blizzMemory))
+  tooltip:AddLine("")
+  tooltip:AddLine("")
+  tooltip:AddLine("|cffffff00<Left-click>|r","Force garbage collection")
+  tooltip:AddLine("|cffffff00<Right-click>|r","Open System options")
+  tooltip:AddLine("|cffffff00<Shift-hold>|r","Show all addons")
+end
+
+local function tooltipData(tooltip, addonListDefaultLength)
+  tooltipHeader(tooltip, addonListDefaultLength)
+  local blizzUi, addons = tooltipAddonsMemoryUsed(tooltip, addonListDefaultLength)
+  tooltipFooter(tooltip, blizzUi, addons)
+end
+
+local function tooltip()
+  if libTT:IsAcquired("SystemTip") then
+    libTT:Release(libTT:Acquire("SystemTip"))
+  end
+  local tooltip = libTT:Acquire("SystemTip", 2, "LEFT")
+  tooltip:SmartAnchorTo(groupFrame)
+  tooltip:SetAutoHideDelay(.1, groupFrame)
+  tooltipData(tooltip, 10)
+  XB:SkinTooltip(tooltip,"SystemTip")
+  tooltip:Show()
+end
+
+local function refreshOptions()
+    Bar,BarFrame = XB:GetModule("Bar"), XB:GetModule("Bar"):GetFrame()
+end
+
+local function frameRate()
+  return floor(GetFramerate()).." fps"
+end
+
+local function getWorldPing()
+  local _, _, _, latencyWorld = GetNetStats()
+  return latencyHome
+end
+
+local function getLocalPing()
+  local _, _, latencyHome, _ = GetNetStats()
+  return latencyHome
+end
+
+local function ping(isWorld)
+  local latency = 0
+  if isWorld then
+    latency = getWorldPing()
+  else
+    latency = getLocalPing()
+  end
+  return latency.." ms"
+end
+
+moduleFunctions = {["ping"] = ping, ["fps"] = frameRate}
+
+----------------------------------------------------------------------------------------------------------
+-- Options
+----------------------------------------------------------------------------------------------------------
+local system_default = {
+    profile = {
+      enable = {
+        group = true,
+        fps = true,
+        ping = true
+        },
+      lock = true,
+      x = {
+        group = -290,
+        fps = 0,
+        ping = 36
+      },
+      y = {
+        group = 0,
+        fps = 0,
+        ping = 0
+      },
+      w = {
+        group = 120,
+        fps = 16,
+        ping = 16
+      },
+      h = {
+        group = 16,
+        fps = 16,
+        ping = 16
+      },
+      anchor = {
+        group = "RIGHT",
+        fps = "LEFT",
+        ping = "CENTER"
+      },
+      color = {
+        group = {1,1,1,.75},
+        fps = {1,1,1,.75},
+        ping = {1,1,1,.75}
+      },
+      colorCC = false,
+      hover = {
+        group = XB.playerClass == "PRIEST" and {.5,.5,0,.75} or {ccR,ccG,ccB,.75},
+        fps = XB.playerClass == "PRIEST" and {.5,.5,0,.75} or {ccR,ccG,ccB,.75},
+        ping = XB.playerClass == "PRIEST" and {.5,.5,0,.75} or {ccR,ccG,ccB,.75}
+      },
+      hoverCC = not (XB.playerClass == "PRIEST"),
+      refreshRate = {
+        group = 1,
+        fps = 1,
+        ping = 1
+      }
+    }
+  }
+
+system_config = {
+
+}
+
+----------------------------------------------------------------------------------------------------------
+-- Module functions
+----------------------------------------------------------------------------------------------------------
+function System:OnInitialize()
+    libTT = LibStub('LibQTip-1.0')
+    self.db = XB.db:RegisterNamespace("System", system_default)
+    self.settings = self.db.profile
+end
+
+function System:OnEnable()
+    System.settings.lock = System.settings.lock or not System.settings.lock --Locking frame if it was not locked on reload/relog
+    refreshOptions()
+    XB.Config:Register("Micro Menu",mm_config)
+    if self.settings.enable then
+        self:CreateFrames()
+    else
+        self:Disable()
+    end
+end
+
+function System:OnDisable()
+  if groupFrame:IsShown() then
+    groupFrame:Hide()
+  end
+end
+
+function System:CreateFrames()
+  self:CreateGroupFrame()
+  for _, element in ipairs(systemElements) do
+    self:CreateElementFrame(element)
+  end
+end
+
+function System:CreateGroupFrame()
+  if not self.settings.enable then
+    if groupFrame and groupFrame:IsVisible() then
+    groupFrame:Hide()
+    end
+    return
+  end
+
+  local x,y,w,h,a = self.settings.x.group,self.settings.y.group,self.settings.w.group,self.settings.h.group,self.settings.anchor.group
+
+  groupFrame = groupFrame or CreateFrame("Frame","SystemGroupFrame", BarFrame)
+  groupFrame:SetPoint(a, x, y)
+  groupFrame:SetSize(w, h)
+  groupFrame:SetMovable(true)
+  groupFrame:SetClampedToScreen(true)
+  groupFrame:Show()
+  XB:AddOverlay(self,groupFrame,a)
+  
+  groupFrame:SetScript("OnEnter", function()
+    tooltip()
+    moduleHovered = true
+  end)
+
+  groupFrame:SetScript("OnLeave", function()
+    moduleHovered = false
+  end)
+
+  local elapsed = 0
+  groupFrame:SetScript("OnUpdate", function(_, e)
+    elapsed = elapsed + e
+    if elapsed >= 1 and moduleHovered then
+      tooltip()
+      elapsed = 0
+    end
+  end)
+
+  groupFrame:SetScript("OnMouseUp", function(_, button)
+    if button == "LeftButton" then
+      UpdateAddOnMemoryUsage()
+      local before = gcinfo()
+      collectgarbage()
+      UpdateAddOnMemoryUsage()
+      local after = gcinfo()
+      DEFAULT_CHAT_FRAME:AddMessage("|cff6699FFXIV Databar|r: Cleaned: |cffffff00"..formatMemoryValue(before-after))
+    elseif button == "RightButton" then
+      ToggleFrame(VideoOptionsFrame)
+    end
+  end)
+
+  if not self.settings.lock then
+    groupFrame.overlay:Show()
+    groupFrame.overlay.anchor:Show()
+  else
+    groupFrame.overlay:Hide()
+    groupFrame.overlay.anchor:Hide()
+  end
+end
+
+function System:CreateElementFrame(element)
+  if not self.settings.enable[element] then
+    if moduleFrames[element] and moduleFrames[element]:IsVisible() then
+      moduleFrames[element]:Hide()
+    end
+    return
+  end
+  
+  local x,y,w,h,a,color,hover,refreshRate = self.settings.x[element],self.settings.y[element],self.settings.w[element],self.settings.h[element],self.settings.anchor[element],self.settings.color[element],self.settings.hover[element], self.settings.refreshRate[element]
+  moduleFrames[element] = moduleFrames[element] or CreateFrame("Button", element.."Frame", groupFrame)
+  local frame = moduleFrames[element];
+  frame:SetSize(w, h)
+  frame:SetPoint(a,x,y)
+  frame:EnableMouse(true)
+  frame:RegisterForClicks("AnyUp")
+  frame:Show()
+  
+  moduleIcons[element] = moduleIcons[element] or frame:CreateTexture(nil,"OVERLAY",nil,7)
+  local icon = moduleIcons[element];
+  icon:SetSize(w,h)
+  icon:SetPoint("CENTER")
+  icon:SetTexture(XB.systemIcons[element])
+  icon:SetVertexColor(unpack(color))
+
+  moduleTexts[element] = moduleTexts[element] or frame:CreateFontString(nil, "OVERLAY")
+  local text = moduleTexts[element]
+  text:SetFont(XB.mediaFold.."font\\homizio_bold.ttf", 12)
+  text:SetPoint("LEFT", icon, "RIGHT",2,0)
+  text:SetTextColor(unpack(color))
+
+  local elapsed = 0
+  frame:SetScript("OnUpdate", function(_, e) 
+    elapsed = elapsed + e
+    if elapsed >= refreshRate then
+      text:SetText(moduleFunctions[element]())
+      elapsed = 0
+    end
+  end)
+
+   frame:SetScript("OnMouseUp", function(_, button) 
+    print(button)
+  end)
+  
+end
+
+--[[local AddOnName, XIVBar = ...;
 local _G = _G;
 local xb = XIVBar;
 local L = XIVBar.L;
@@ -177,7 +514,7 @@ function SystemModule:RegisterFrameEvents()
     self:LeaveFunction()
   end)
 
-  --[[self.fpsFrame:SetScript('OnKeyDown', function()
+  --[self.fpsFrame:SetScript('OnKeyDown', function()
     if IsShiftKeyDown() and self.fpsFrame:IsMouseOver() then
       if xb.db.profile.modules.system.showTooltip then
         self:ShowTooltip()
@@ -207,7 +544,7 @@ function SystemModule:RegisterFrameEvents()
         self:ShowTooltip()
       end
     end
-  end)]]--
+  end)]--
 
   self.fpsFrame:SetScript('OnClick', function(_, button)
     if InCombatLockdown() then return; end
@@ -368,3 +705,4 @@ function SystemModule:GetConfig()
     }
   }
 end
+--]]
