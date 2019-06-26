@@ -153,7 +153,7 @@ local system_default = {
       x = {
         group = -290,
         fps = 0,
-        ping = 36
+        ping = 18
       },
       y = {
         group = 0,
@@ -211,7 +211,7 @@ end
 function System:OnEnable()
     System.settings.lock = System.settings.lock or not System.settings.lock --Locking frame if it was not locked on reload/relog
     refreshOptions()
-    XB.Config:Register("Micro Menu",mm_config)
+    XB.Config:Register("System",system_config)
     if self.settings.enable then
         self:CreateFrames()
     else
@@ -332,6 +332,9 @@ function System:CreateElementFrame(element)
    frame:SetScript("OnMouseUp", function(_, button) 
     print(button)
   end)
+
+   frame:SetScript("OnEnter", function() icon:SetVertexColor(unpack(hover)) end)
+   frame:SetScript("Onleave", function() icon:SetVertexColor(unpack(color)) end)
   
 end
 

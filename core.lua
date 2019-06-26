@@ -13,6 +13,8 @@ XB.releaseType = "alpha"
 
 XB.playerName = UnitName("player")
 XB.playerClass = select(2, UnitClass("player"))
+XB.playerFaction = UnitFactionGroup("player")
+XB.playerRealm = GetRealmName()
 
 XB.mediaFold = "Interface\\AddOns\\"..AddOnName.."\\media\\"
 
