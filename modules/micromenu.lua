@@ -93,7 +93,7 @@ end
 microMenuElementsFunctions = {characterClick,spellbookClick,talentsClick,achievementsClick,questsClick,lfgClick,pvpClick,collectionsClick,adventureClick,storeClick,helpClick}
 
 local function clickFunction(element) 
-  local index = xb_tContains(microMenuElements,element);
+  local index = tIndexOf(microMenuElements,element);
   if index then
     microMenuElementsFunctions[index]();
   end

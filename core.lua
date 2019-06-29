@@ -98,28 +98,98 @@ function round(number)
     return number-int <=0.5 and int or int+1
 end
 
-function xb_tContains(table, item)
-    local index = 1;
-    while table[index] do
-        if ( item == table[index] ) then
-            return index;
-        end
-        index = index + 1;
+-- table functions 
+function tableKeys(tbl)
+    local out = {}
+    for k, _ in pairs(tbl) do
+        table.insert(out, k)
     end
-    return nil;
 end
 
-function xb_tKeyContains(table,key)
+function tableValues(tbl)
+    local out = {}
+    for _, v in pairs(tbl) do
+        table.insert(out, v)
+    end
+end
+
+function tableWhereKeyContains(tbl, key_part)
     local out = {}
 
-    for k,v in pairs(table) do
+    for k,v in pairs(tbl) do
         if not tonumber(k) then
-            if k:find(key) then
+            if k:find(key_part) then
                 out[k] = v
             end
         end
     end
     return out == {} and nil or out
+end
+
+function tableWhereValueContains(tbl, value_part)
+    local out = {}
+
+    for k, v in pairs(tbl) do
+        if type(v) == "string" and v:find(value_part) then
+            out[k] = v
+        end
+    end
+    return out == {} and nil or out
+end
+
+function subTableFromKeyMatchings(tbl, matching_keys)
+    local out = {}
+
+    for k, v in pairs(tbl) do
+        local found = false
+        for _, w in pairs(matching_keys) do
+            found = found or k == w
+        end
+        if found then
+            out[k] = v
+        end
+    end
+    return out == {} and nil or out
+end
+
+function subTableFromKeyExclusions(tbl, exclusion_keys)
+    local out = {}
+
+    for k, v in pairs(tbl) do
+        local found = false
+        for _, w in pairs(exclusion_keys) do
+            found = found or k == w
+        end
+        if not found then
+            out[k] = v
+        end
+    end
+    return out == {} and nil or out
+end
+
+function subTableFromKeyMatcher(lua_table, key_matcher)
+    local all_items = {}
+    for k, _ in pairs(lua_table) do
+        if(key_matcher(k))then
+            table.insert(all_items, k)
+        end
+    end
+    return all_items
+end
+
+function subTableFromValueMatcher(lua_table, item_matcher)
+    local all_items = {}
+    for _, v in pairs(lua_table) do
+        if(item_matcher(v))then
+            table.insert(all_items, v)
+        end
+    end
+    return all_items
+end
+
+function bnetClientVariableMatcher(variable_name)
+    local start = "BNET_CLIENT"
+    return variable_name:sub(1, #start) == start
 end
 ----------------------------------------------------------------------------------------------------------
 -- Private functions

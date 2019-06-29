@@ -14,6 +14,9 @@ local groupFrame,chatFrame,chatFrameIcon,guildFrame,guildIcon,guildText,guildTex
 local MOBILE_ONLINE_ICON = "Interface\\ChatFrame\\UI-ChatIcon-ArmoryChat";
 local MOBILE_BUSY_ICON = "Interface\\ChatFrame\\UI-ChatIcon-ArmoryChat-BusyMobile";
 local MOBILE_AWAY_ICON = "Interface\\ChatFrame\\UI-ChatIcon-ArmoryChat-AwayMobile";
+local bnetClients = tableWhereKeyContains(_G,"BNET_CLIENT")
+local bnetClientsNoGames = subTableFromKeyMatchings(bnetClients, {"BNET_CLIENT_APP","BNET_CLIENT_CLNT"})
+local bnetClientsGames = subTableFromKeyExclusions(bnetClients, {"BNET_CLIENT_APP","BNET_CLIENT_CLNT"})
 
 ----------------------------------------------------------------------------------------------------------
 -- Private functions
@@ -49,7 +52,7 @@ local function chatClick(self, button)
 	end
 end
 
-local function splitLongLine(text,maxLetters)
+local function splitLongLine(text, maxLetters)
 	maxLetters = maxLetters or 250
 	local result = {}
 	repeat
@@ -91,7 +94,7 @@ local function splitLongLine(text,maxLetters)
 	return result
 end
 
-local function getStatusIcon(online,isMobile,status)
+local function getStatusIcon(online, isMobile,  status)
 	if online then
 		if status == 0 then
 			return FRIENDS_TEXTURE_ONLINE
@@ -156,7 +159,7 @@ local function guildTooltip()
 		libTT:Release(libTT:Acquire("GuildTooltip"))
 	end
 
-	if ( IsInGuild() ) then
+	if IsInGuild() then
 		GuildRoster()
 		local guildName, guildRank, _ = GetGuildInfo("player")
 		local guildMotto = GetGuildRosterMOTD()
@@ -303,7 +306,7 @@ local function ClassColourCode(class,table)
 	end
 end
 
-local function concatTable( ... )
+local function concatTables( ... )
 	local args = {...}
 	local res = {}
 	for i = 1,#args do
@@ -325,50 +328,46 @@ local function socialTooltip()
 	tooltip:SetAutoHideDelay(.5, socialFrame)
 	tooltip:SetCellMarginH(2)
 	tooltip:EnableMouse(true)
-	
+
 	tooltip:AddLine("[|cff6699FFSocial|r]")
 	tooltip:AddLine(" ")
 	--------------------------
 	local onlineBnetFriends = false
-	local bNetClients = xb_tKeyContains(_G,"BNET_CLIENT")
-	--[[for k,v in pairs(bNetClients) do
-		print(k,v)
-	end--]]
 
-	--Grouping contacts
-	local appContacts, wowContacts, diabloContacts, sc2Contacts, hsContacts, hotsContacts, owContacts = {},{},{},{},{},{},{}
-	for j = 1, BNGetNumFriends() do
-		local client = select(7,BNGetFriendInfo(j))
-
-		if client == BNET_CLIENT_APP then 
-			table.insert(appContacts,j)
-		elseif client == BNET_CLIENT_D3 then
-			table.insert(diabloContacts,j)
-		elseif client == BNET_CLIENT_HEROES then
-			table.insert(hotsContacts,j)
-		elseif client == BNET_CLIENT_S2 then
-			table.insert(sc2Contacts,j)
-		elseif client == BNET_CLIENT_WOW then
-			table.insert(wowContacts,j)
-		elseif client == BNET_CLIENT_WTCG then
-			table.insert(hsContacts,j)
-		elseif client == BNET_CLIENT_OVERWATCH then
-			table.insert(owContacts,j)
+	local contacts = {}
+	for _, v in pairs(bnetClients) do
+		for i = 1, BNGetNumFriends() do
+			local client = select(7,BNGetFriendInfo(i))
+			if client == v then
+				if not contacts[v] then
+					contacts[v] = {}
+				end
+				table.insert(contacts[v],i)
+			end
 		end
 	end
 
 	--Selecting groups
 	local BNContacts = {}
 	if Social.settings.social.hideBnet then
-		BNContacts = CopyTable(concatTable(wowContacts, diabloContacts, sc2Contacts, hsContacts, hotsContacts, owContacts))
+		local noAppBnetContacts = subTableFromKeyExclusions(contacts, bnetClientsNoGames)
+		local concatenatedNoAppBnetContacts = {}
+		for _,v in pairs(noAppBnetContacts) do
+			concatenatedNoAppBnetContacts = concatTables(concatenatedNoAppBnetContacts, v)
+		end
+		BNContacts = CopyTable(concatenatedNoAppBnetContacts)
 	end
 	if Social.settings.social.hideNoWow then
-		BNContacts = wowContacts
+		BNContacts = CopyTable(subTableFromKeyMatchings(contacts, {BNET_CLIENT_WOW})[BNET_CLIENT_WOW])
+	end
+	if not Social.settings.social.hideBnet and not Social.settings.social.hideNoWow then
+		local concatenatedContacts = {}
+		for _,v in pairs(contacts) do
+			concatenatedContacts = concatTables(concatenatedContacts, v)
+		end
+		BNContacts = CopyTable(concatenatedContacts)
 	end
 
-	if not Social.settings.social.hideBnet and not Social.settings.social.hideNoWow then
-		BNContacts = CopyTable(concatTable(wowContacts, diabloContacts, sc2Contacts, hsContacts, hotsContacts, owContacts, appContacts))
-	end
 
 	for _,j in ipairs(BNContacts) do
 		local BNid, BNname, battleTag, _, toonname, toonid, client, online, lastonline, isafk, isdnd, broadcast, note = BNGetFriendInfo(j)
@@ -377,23 +376,21 @@ local function socialTooltip()
 		local class = toonid and select(8, BNGetGameAccountInfo(toonid)) or ""
 		local area = toonid and select(10, BNGetGameAccountInfo(toonid)) or ""
 		local realmName = toonid and select(4,BNGetGameAccountInfo(toonid)) or ""
-		
+
 		if ( online ) then
 			battleTag = battleTag or "[noBTag]"
-			
+
 			local statusIcon
-			if isafk then 
+			if isafk then
 				statusIcon = getStatusIcon(true,false,1)
 			elseif isdnd then
 				statusIcon = getStatusIcon(true,false,2)
 			else
 				statusIcon = getStatusIcon(true,false,0)
 			end
-			
+
 			local gameIcon = "Interface\\Icons\\INV_Misc_QuestionMark.blp"
-			if client == BNET_CLIENT_APP then 
-				gameIcon = XB.gameIcons.app
-			elseif client == BNET_CLIENT_D3 then
+			if client == BNET_CLIENT_D3 then
 				gameIcon = XB.gameIcons.d3
 			elseif client == BNET_CLIENT_HEROES then
 				gameIcon = XB.gameIcons.hots
@@ -405,40 +402,40 @@ local function socialTooltip()
 				gameIcon = XB.gameIcons.hs
 			elseif client == BNET_CLIENT_OVERWATCH then
 				gameIcon = XB.gameIcons.overwatch
+			else
+				gameIcon = XB.gameIcons.app
 			end
-			
+
 			if not note or note == "" then
 				note = ""
 			else
 				note = ("|cffecd672"..note.."|r")
 			end
-			
+
 			local lineL = string.format("|T%s:16|t|T%s:16|t |cff82c5ff%s|r",statusIcon,gameIcon, BNname)
 			local lineR = class ~= "" and (CanCooperateWithGameAccount(toonid) and ClassColourCode(class)..toonname.."|r" or FRIENDS_OTHER_NAME_COLOR_CODE..toonname.."|r") or ""
-			if true then --client ~= BNET_CLIENT_APP opt
-				tooltip:AddLine(lineL,lineR,area,note)
-				tooltip:SetLineScript(tooltip:GetLineCount(),"OnEnter",function() end)
-				tooltip:SetLineScript(tooltip:GetLineCount(),"OnLeave",function() end)
-				tooltip:SetLineScript(tooltip:GetLineCount(),"OnMouseUp",function(self,_,button)
-					if button == "LeftButton" then
-						if false then --Modifier
-							if CanGroupWithAccount(BNid) then
-								InviteToGroup(toonname.."-"..realmName)
-							end
-						else
-							ChatFrame_OpenChat(SLASH_SMART_WHISPER1.." "..BNname.." ")
+			tooltip:AddLine(lineL,lineR,area,note)
+			tooltip:SetLineScript(tooltip:GetLineCount(),"OnEnter",function() end)
+			tooltip:SetLineScript(tooltip:GetLineCount(),"OnLeave",function() end)
+			tooltip:SetLineScript(tooltip:GetLineCount(),"OnMouseUp",function(self,_,button)
+				if button == "LeftButton" then
+					if false then --Modifier
+						if CanGroupWithAccount(BNid) then
+							InviteToGroup(toonname.."-"..realmName)
 						end
-					elseif button == "RightButton" then
-						if toonname ~= "" and client == BNET_CLIENT_WOW then
-							ChatFrame_SendTell(toonname.."-"..realmName)
-						end
+					else
+						ChatFrame_SendBNetTell(BNname)
 					end
-				end)
-				onlineBnetFriends = true
-			end
+				elseif button == "RightButton" then
+					if toonname ~= "" and client == BNET_CLIENT_WOW then
+						ChatFrame_SendTell(toonname.."-"..realmName)
+					end
+				end
+			end)
+			onlineBnetFriends = true
 		end
 	end
-	
+
 	if onlineBnetFriends then tooltip:AddLine(" ") end
 
 	local onlineFriends = false
@@ -1273,7 +1270,7 @@ function Social:OnEnable()
 	Social.settings.lock = Social.settings.lock or not Social.settings.lock --Locking frame if it was not locked on reload/relog
 	refreshOptions()
 	XB.Config:Register("Social",social_config)
-	
+
 	if self.settings.enable and not self:IsEnabled() then
 		self:Enable()
 	elseif not self.settings.enable and self:IsEnabled() then
@@ -1292,7 +1289,7 @@ end
 function Social:Update(frameName)
 	refreshOptions()
 	XB.Config:Register("Social",social_config)
-	
+
 	if self.settings.enable and not self:IsEnabled() then
 		self:Enable()
 	elseif not self.settings.enable and self:IsEnabled() then
@@ -1335,7 +1332,7 @@ function Social:CreateGroupFrame()
 	groupFrame:SetClampedToScreen(true)
 	groupFrame:Show()
 	XB:AddOverlay(self,groupFrame,a)
-	
+
 	if not Social.settings.lock then
 		groupFrame.overlay:Show()
 		groupFrame.overlay.anchor:Show()
@@ -1352,22 +1349,22 @@ function Social:CreateChatFrame()
 		end
 		return
 	end
-	
+
 	local w,h,x,y,a,color,hover = self.settings.w.chat,self.settings.h.chat,self.settings.x.chat,self.settings.y.chat,self.settings.anchor.chat,self.settings.color.chat,self.settings.hover.chat
-	
+
 	chatFrame = chatFrame or CreateFrame("BUTTON","ChatButton",groupFrame)
 	chatFrame:SetSize(w, h)
 	chatFrame:SetPoint(a,x,y)
 	chatFrame:EnableMouse(true)
 	chatFrame:RegisterForClicks("AnyUp")
 	chatFrame:Show()
-	
+
 	chatFrameIcon = chatFrameIcon or chatFrame:CreateTexture(nil,"OVERLAY",nil,7)
 	chatFrameIcon:SetSize(w,h)
 	chatFrameIcon:SetPoint("CENTER")
 	chatFrameIcon:SetTexture(XB.menuIcons.chat)
 	chatFrameIcon:SetVertexColor(unpack(color))
-	 
+
 	chatFrame:SetScript("OnEnter", function()
 		if InCombatLockdown() and not self.settings.combatEn.chat then return end
 		chatFrameIcon:SetVertexColor(unpack(hover))
@@ -1434,11 +1431,11 @@ function Social:CreateGuildFrame()
 		if InCombatLockdown() and not self.settings.combatEn.guild then return end
 
 		guildIcon:SetVertexColor(unpack(hover))
-		
+
 		if libTT:IsAcquired("SocialTooltip") then
 			libTT:Release(libTT:Acquire("SocialTooltip"))
 		end
-		
+
 		if not self.settings.tooltip.guild then return end
 		guildTooltip()
 	end)
@@ -1450,13 +1447,8 @@ function Social:CreateGuildFrame()
 	guildFrame:SetScript("OnClick", function(self, button)
 		if InCombatLockdown() and not Social.settings.combatEn.guild then return end
 
-		if button == "LeftButton" then 
-			if ( IsInGuild() ) then
-				ToggleGuildFrame()
-				--GuildFrameTab2:Click()
-			else
-				ToggleGuildFrame()
-			end
+		if button == "LeftButton" then
+			ToggleGuildFrame()
 		end
 	end)
 end
@@ -1494,7 +1486,7 @@ function Social:CreateSocialFrame()
 	socialText:SetPoint("CENTER", socialFrame, "TOP")
 
 	if Bar.settings.anchor:find("TOP") then
-		socialText:SetPoint("CENTER", friendFrame, "BOTTOM")
+		socialText:SetPoint("CENTER", socialFrame, "BOTTOM")
 	end
 
 	socialTextBG = socialTextBG or socialFrame:CreateTexture(nil,"OVERLAY",nil,7)
@@ -1518,7 +1510,7 @@ function Social:CreateSocialFrame()
 
 	socialFrame:SetScript("OnEnter", function()
 		if InCombatLockdown() and not Social.settings.combatEn.social then return end
-		
+
 		socialIcon:SetVertexColor(unpack(hover))
 		if libTT:IsAcquired("GuildTooltip") then
 			libTT:Release(libTT:Acquire("GuildTooltip"))
@@ -1545,7 +1537,4 @@ function Social:CreateSocialFrame()
 			ToggleFriendsFrame()
 		end
 	end)
-end
-
-function Social:GetFrame()
 end
