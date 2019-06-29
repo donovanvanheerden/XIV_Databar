@@ -1,6 +1,6 @@
 local addOnName, XB = ...;
 
-local Mb = XB:RegisterModule("MenuButton")
+local Mb = XB:RegisterModule(MAINMENU_BUTTON)
 
 ----------------------------------------------------------------------------------------------------------
 -- Local variables
@@ -40,60 +40,43 @@ local function refreshOptions()
 	mb_config.general.args.height.max = round(BarFrame:GetHeight())
 end
 
-local function clickFunctions(self,button,down)
+local function menuButtonClickFunction(button, modifier_setting, click_setting, function_name)
+	local modifier = modifier_setting == 1 or (modifier_setting == 2 and IsShiftKeyDown or (modifier_setting == 3 and IsAltKeyDown or IsControlKeyDown))
+	local click = click_setting == 1 and "LeftButton" or "RightButton"
+
+	if type(modifier) == "function" then
+		if modifier() and button == click then
+			if function_name == "reload" then
+				ReloadUI()
+			elseif function_name == "menu" then
+				ToggleFrame(GameMenuFrame)
+			elseif function_name == "addon" then
+				ToggleFrame(AddonList)
+			elseif function_name == "option" then
+				ToggleConfig()
+			end
+		end
+	else
+		if not IsModifierKeyDown() and button == click then
+			if function_name == "reload" then
+				ReloadUI()
+			elseif function_name == "menu" then
+				ToggleFrame(GameMenuFrame)
+			elseif function_name == "addon" then
+				ToggleFrame(AddonList)
+			elseif function_name == "option" then
+				ToggleConfig()
+			end
+		end
+	end
+end
+
+local function clickFunctions(self,button, _)
 	if InCombatLockdown() and not Mb.settings.combatEn then return end
-
-	-- ReloadUI function
-	local modifierR = Mb.settings.modReload == 1 or (Mb.settings.modReload == 2 and IsShiftKeyDown or (Mb.settings.modReload == 3 and IsAltKeyDown or IsControlKeyDown))
-	local clickR = Mb.settings.clickReload == 1 and "LeftButton" or "RightButton"
-	if type(modifierR)=="function" then
-		if modifierR() and button == clickR then
-			ReloadUI()--ChatFrame_OpenChat("/reload"); return -- For now 7.2 does not allow ReloadUI() func call
-		end
-	else
-		if not IsModifierKeyDown() and button == clickR then
-			ReloadUI()--ChatFrame_OpenChat("/reload"); return
-		end
-	end
-
-	-- GameMenu function
-	local modifierM = Mb.settings.modMenu == 1 or (Mb.settings.modMenu == 2 and IsShiftKeyDown or (Mb.settings.modMenu == 3 and IsAltKeyDown or IsControlKeyDown))
-	local clickM = Mb.settings.clickMenu == 1 and "LeftButton" or "RightButton"
-	if type(modifierM)=="function" then
-		if modifierM() and button == clickM then
-			ToggleFrame(GameMenuFrame); return
-		end
-	else
-		if not IsModifierKeyDown() and button == clickM then
-			ToggleFrame(GameMenuFrame); return
-		end
-	end
-
-	-- AddonList function
-	local modifierA = Mb.settings.modAddonL == 1 and XB.modifiers[Mb.settings.modAddonL] or (Mb.settings.modAddonL == 2 and IsShiftKeyDown or (Mb.settings.modAddonL == 3 and IsAltKeyDown or IsControlKeyDown))
-	local clickA = Mb.settings.clickAddonL == 1 and "LeftButton" or "RightButton"
-	if type(modifierA)=="function" then
-		if modifierA() and button == clickA then
-			ToggleFrame(AddonList); return
-		end
-	else
-		if not IsModifierKeyDown() and button == clickA then
-			ToggleFrame(AddonList); return
-		end
-	end
-
-	-- Options function
-	local modifierO = Mb.settings.modOpts == 1 or (Mb.settings.modOpts == 2 and IsShiftKeyDown or (Mb.settings.modOpts == 3 and IsAltKeyDown or IsControlKeyDown))
-	local clickO = Mb.settings.clickOpts == 1 and "LeftButton" or "RightButton" --ToggleConfig()
-	if type(modifierO)=="function" then
-		if modifierO() and button == clickO then
-			ToggleConfig()
-		end
-	else
-		if not IsModifierKeyDown() and button == clickO then
-			ToggleConfig()
-		end
-	end
+	menuButtonClickFunction(button, Mb.settings.modReload, Mb.settings.clickReload, "reload")
+	menuButtonClickFunction(button, Mb.settings.modMenu, Mb.settings.clickMenu, "menu")
+	menuButtonClickFunction(button, Mb.settings.modAddonL, Mb.settings.clickAddonL, "addon")
+	menuButtonClickFunction(button, Mb.settings.modOpts, Mb.settings.clickOpts, "option")
 end
 
 ----------------------------------------------------------------------------------------------------------
@@ -128,7 +111,7 @@ local mb_default = {
 mb_config = {
 	title = {
 		type = "description",
-		name = "|cff64b4ffGame menu module",
+		name = "|cff64b4ffGame menu module|r",
 		fontSize = "large",
 		order = 0
 	},
@@ -151,7 +134,7 @@ mb_config = {
 				order = 1
 			},
 			lock = {
-				name = "Unlock",
+				name = "Locked",
 				type = "toggle",
 				desc = "(Un)locks the frame in order to position it by moving it with your mouse",
 				get = function() return Mb.settings.lock end,
@@ -395,14 +378,14 @@ mb_config = {
 ----------------------------------------------------------------------------------------------------------
 function Mb:OnInitialize()
 	libTT = LibStub('LibQTip-1.0')
-	self.db = XB.db:RegisterNamespace("MenuButton", mb_default)
+	self.db = XB.db:RegisterNamespace(MAINMENU_BUTTON, mb_default)
     self.settings = self.db.profile
 end
 
 function Mb:OnEnable()
 	Mb.settings.lock = Mb.settings.lock or not Mb.settings.lock --Locking frame if it was not locked on reload/relog
 	refreshOptions()
-	XB.Config:Register("Game menu",mb_config)
+	XB.Config:Register(MAINMENU_BUTTON,mb_config)
 	if self.settings.enable then
 		self:CreateButton()
 	else
@@ -418,7 +401,6 @@ end
 
 function Mb:Update()
 	refreshOptions()
-	XB.Config:Register("MenuButton",mb_config)
 
 	if self.settings.enable and not self:IsEnabled() then
 		self:Enable()
@@ -476,7 +458,7 @@ function Mb:CreateButton()
 	end
 
 	XB:AddOverlay(self,gameMenuFrame,anchor)
-	
+
 	if not Mb.settings.lock then
 		gameMenuFrame.overlay:Show()
 		gameMenuFrame.overlay.anchor:Show()
@@ -484,9 +466,5 @@ function Mb:CreateButton()
 		gameMenuFrame.overlay:Hide()
 		gameMenuFrame.overlay.anchor:Hide()
 	end
-	
-end
 
-function Mb:GetFrame()
-	return gameMenuFrame
 end
