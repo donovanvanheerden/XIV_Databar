@@ -138,7 +138,7 @@ local function createPopupFrame(specType)
 				local buttonText = button:CreateFontString(nil, 'OVERLAY')
 				local buttonIcon = button:CreateTexture(nil, 'BACKGROUND')
 
-				buttonIcon:SetTexture(XB.mediaFold.."spec\\"..XB.playerClass)
+				buttonIcon:SetTexture(XB.mediaFold.."class\\"..XB.playerClass)
 				buttonIcon:SetTexCoord(unpack(textureCoordinates[localSpecId]))
 				buttonIcon:SetSize(iconSize, iconSize)
 				buttonIcon:SetPoint('LEFT')
@@ -300,7 +300,7 @@ function Spec:Refresh()
 end
 
 function Spec:CreateFrames()
-	--dissocier la frame principale sur la barre et les frames de changement de spec
+	--ungroup the main frame on the bar and the spec change frames
 	if not Spec.settings.enable then
 	  if specFrame and specFrame:IsVisible() then
 		specFrame:Hide()
@@ -338,7 +338,7 @@ function Spec:CreateFrames()
 	specIcon:ClearAllPoints()
 	specIcon:SetPoint("LEFT")
 	specIcon:SetSize(w,h)
-	specIcon:SetTexture(XB.mediaFold.."spec\\"..XB.playerClass)
+	specIcon:SetTexture(XB.mediaFold.."class\\"..XB.playerClass)
 	specIcon:SetTexCoord(unpack(textureCoordinates[currentSpecIndex]))
 	specIcon:SetVertexColor(unpack(color))
 

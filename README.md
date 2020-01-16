@@ -3,7 +3,8 @@ A highly customizable databar for the World of Warcraft UI, a continuation of th
 
 ## Options
 You can bring the option panel with one of the following chat commands :
-```/xb
+```
+/xb
 /xivb
 /xivbar
 /xivdatabar
