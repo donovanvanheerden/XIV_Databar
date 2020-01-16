@@ -1,13 +1,17 @@
-## Interface: 80000
+## Interface: 80200
 ## Title: XIV_Databar
-## Author: Mikeprod
+## Author: Donovan van Heerden
 ## Version: 2.0.16
-## Notes: Adds a bottombar by the request of |cffffffffu/sammojo|r on Reddit, Icons made by |cffffffffu/sammojo|r. Previously maintained by |cff00FF99Saxitoxin|r then |cffbbbbbbMille|cff990000XIV|r.
-## SavedVariables: TEST_CONFIG, XIVBarDB
-## X-Issues: https://github.com/Mikeprod/XIV_Databar/issues
+## Notes: XIV Databar forked from https://github.com/Mikeprod/XIV_Databar
+## SavedVariables: XIVBarDB
+## X-Issues: https://github.com/donovanvanheerden/XIV_Databar/issues
+## X-WoWI-ID: 24884
 
 embeds.xml
-
-locales\locales.xml
+db\ports.lua
+#locales\locales.xml
 core.lua
+Config.lua
+Bar.lua
 modules\load_modules.xml
+

@@ -1,16 +1,310 @@
-local AddOnName, XIVBar = ...;
-local _G = _G;
-local pairs, unpack, select = pairs, unpack, select
-LibStub("AceAddon-3.0"):NewAddon(XIVBar, AddOnName, "AceConsole-3.0", "AceEvent-3.0");
-local L = LibStub("AceLocale-3.0"):GetLocale(AddOnName, true);
-local ldb = LibStub:GetLibrary("LibDataBroker-1.1"):NewDataObject(AddOnName, {
-    type = "launcher",
-    icon = "Interface\\Icons\\Spell_Nature_StormReach",
-    OnClick = function(clickedframe, button)
-        XIVBar:ToggleConfig()
-    end,
-})
+local AddOnName, Core = ...;
+XB = LibStub("AceAddon-3.0"):NewAddon(Core, AddOnName, "AceConsole-3.0", "AceEvent-3.0");
+XB:SetDefaultModuleLibraries("AceEvent-3.0", "AceConsole-3.0")
+--local L = LibStub("AceLocale-3.0"):GetLocale(AddOnName, true);
+XB.LSM = LibStub('LibSharedMedia-3.0');
 
+
+----------------------------------------------------------------------------------------------------------
+-- Variables
+----------------------------------------------------------------------------------------------------------
+XB.version = "3.0.1"
+XB.releaseType = "alpha"
+
+XB.playerName = UnitName("player")
+XB.playerClass = select(2, UnitClass("player"))
+XB.playerFaction = UnitFactionGroup("player")
+XB.playerRealm = GetRealmName()
+
+XB.mediaFold = "Interface\\AddOns\\"..AddOnName.."\\media\\"
+
+XB.icons = {
+	anchor = XB.mediaFold.."datatexts\\anchor",
+	exp = XB.mediaFold.."datatexts\\exp",
+	fps = XB.mediaFold.."datatexts\\fps",
+	garr = XB.mediaFold.."datatexts\\garr",
+	garres = XB.mediaFold.."datatexts\\garres",
+	gold = XB.mediaFold.."datatexts\\gold",
+	hearth = XB.mediaFold.."datatexts\\hearth",
+	honor = XB.mediaFold.."datatexts\\honor",
+	ping = XB.mediaFold.."datatexts\\ping",
+	repair = XB.mediaFold.."datatexts\\repair",
+	reroll = XB.mediaFold.."datatexts\\reroll",
+	seal = XB.mediaFold.."datatexts\\seal",
+	shicomp = XB.mediaFold.."datatexts\\shipcomp",
+	sound = XB.mediaFold.."datatexts\\sound"
+}
+
+XB.menuIcons = {
+	menu = XB.mediaFold.."microbar\\menu",
+	chat = XB.mediaFold.."microbar\\chat",
+	guild = XB.mediaFold.."microbar\\guild",
+	social = XB.mediaFold.."microbar\\social",
+	character = XB.mediaFold.."microbar\\char",
+	spellbook = XB.mediaFold.."microbar\\spell",
+	talents = XB.mediaFold.."microbar\\talent",
+	achievements = XB.mediaFold.."microbar\\ach",
+	quests = XB.mediaFold.."microbar\\quest",
+	lfg = XB.mediaFold.."microbar\\lfg",
+	pvp = XB.mediaFold.."microbar\\pvp",
+	collections = XB.mediaFold.."microbar\\pet",
+	adventure = XB.mediaFold.."microbar\\journal",
+	shop = XB.mediaFold.."microbar\\shop",
+	help = XB.mediaFold.."microbar\\help",
+}
+
+XB.systemIcons = {
+    fps = XB.mediaFold.."datatexts\\fps",
+    ping = XB.mediaFold.."datatexts\\ping"
+}
+
+XB.validAnchors = {
+    CENTER = "CENTER",
+    LEFT = "LEFT",
+    RIGHT = "RIGHT",
+    TOP = "TOP",
+    TOPLEFT = "TOPLEFT",
+    TOPRIGHT = "TOPRIGHT",
+    BOTTOM = "BOTTOM",
+    BOTTOMLEFT = "BOTTOMLEFT",
+    BOTTOMRIGHT = "BOTTOMRIGHT",
+}
+
+XB.modifiers = {
+	 "None",
+	SHIFT_KEY_TEXT,
+	ALT_KEY_TEXT,
+	CTRL_KEY_TEXT
+}
+
+XB.mouseButtons = {
+	"Left-Click",
+	HELPFRAME_REPORT_PLAYER_RIGHT_CLICK
+}
+
+XB.gameIcons = {
+	app = "Interface\\FriendsFrame\\Battlenet-Battleneticon.blp",
+	d3 = "Interface\\FriendsFrame\\Battlenet-D3icon.blp",
+	hots = "Interface\\FriendsFrame\\Battlenet-HotSicon.blp",
+	hs = "Interface\\FriendsFrame\\Battlenet-WTCGicon.blp",
+	overwatch = "Interface\\FriendsFrame\\Battlenet-OVERWATCHicon.blp",
+	sc2 = "Interface\\FriendsFrame\\Battlenet-Sc2icon.blp",
+	wow = "Interface\\FriendsFrame\\Battlenet-WoWicon.blp"
+}
+-- TODO: Add an option for that
+PlayerFrame.name:SetFont("Interface\\AddOns\\oUF_Drk\\media\\BigNoodleTitling.ttf", 11, "THINOUTLINE")
+TargetFrame.name:SetFont("Interface\\AddOns\\oUF_Drk\\media\\BigNoodleTitling.ttf", 11, "THINOUTLINE")
+
+function round(number)
+    local int = math.floor(number)
+    return number-int <=0.5 and int or int+1
+end
+
+-- table functions 
+function tableKeys(tbl)
+    local out = {}
+    for k, _ in pairs(tbl) do
+        table.insert(out, k)
+    end
+end
+
+function tableValues(tbl)
+    local out = {}
+    for _, v in pairs(tbl) do
+        table.insert(out, v)
+    end
+end
+
+function tableWhereKeyContains(tbl, key_part)
+    local out = {}
+
+    for k,v in pairs(tbl) do
+        if not tonumber(k) then
+            if k:find(key_part) then
+                out[k] = v
+            end
+        end
+    end
+    return out == {} and nil or out
+end
+
+function tableWhereValueContains(tbl, value_part)
+    local out = {}
+
+    for k, v in pairs(tbl) do
+        if type(v) == "string" and v:find(value_part) then
+            out[k] = v
+        end
+    end
+    return out == {} and nil or out
+end
+
+function subTableFromKeyMatchings(tbl, matching_keys)
+    local out = {}
+
+    for k, v in pairs(tbl) do
+        local found = false
+        for _, w in pairs(matching_keys) do
+            found = found or k == w
+        end
+        if found then
+            out[k] = v
+        end
+    end
+    return out == {} and nil or out
+end
+
+function subTableFromKeyExclusions(tbl, exclusion_keys)
+    local out = {}
+
+    for k, v in pairs(tbl) do
+        local found = false
+        for _, w in pairs(exclusion_keys) do
+            found = found or k == w
+        end
+        if not found then
+            out[k] = v
+        end
+    end
+    return out == {} and nil or out
+end
+
+function subTableFromKeyMatcher(lua_table, key_matcher)
+    local all_items = {}
+    for k, _ in pairs(lua_table) do
+        if(key_matcher(k))then
+            table.insert(all_items, k)
+        end
+    end
+    return all_items
+end
+
+function subTableFromValueMatcher(lua_table, item_matcher)
+    local all_items = {}
+    for _, v in pairs(lua_table) do
+        if(item_matcher(v))then
+            table.insert(all_items, v)
+        end
+    end
+    return all_items
+end
+
+function bnetClientVariableMatcher(variable_name)
+    local start = "BNET_CLIENT"
+    return variable_name:sub(1, #start) == start
+end
+----------------------------------------------------------------------------------------------------------
+-- Private functions
+----------------------------------------------------------------------------------------------------------
+local function savePosition(parent,module)
+	module.settings.anchor,_,_,module.settings.x,module.settings.y = parent:GetPoint()
+end
+
+local function frameOnEnter(self)
+	if not self:GetParent().isMoving then
+		self:SetBackdropBorderColor(0.5, 0.5, 0, 1)
+	end
+end
+
+local function frameOnLeave(self)
+	self:SetBackdropBorderColor(0, 0, 0, 0)
+end
+
+local function frameOnDragStart(self)
+	local parent = self:GetParent()
+	parent:StartMoving()
+	self:SetBackdropBorderColor(0, 0, 0, 0)
+	parent.isMoving = true
+end
+
+----------------------------------------------------------------------------------------------------------
+-- Module functions
+----------------------------------------------------------------------------------------------------------
+function XB:OnInitialize()
+	self.db = LibStub("AceDB-3.0"):New("XIVBarDB",nil,true)
+	self.db.RegisterCallback(self, 'OnProfileReset',function() self:Disable(); self:Enable() end)
+	self.db.RegisterCallback(self, 'OnProfileCopied',function() self:Disable(); self:Enable() end)
+	self.db.RegisterCallback(self, 'OnProfileChanged',function() self:Disable(); self:Enable() end)
+end
+
+function XB:RegisterModule(name, ...)
+	local mod = self:NewModule(name, ...)
+	self[name] = mod
+	return mod
+end
+
+function XB:AddOverlay(module,parent,anchor)
+	--Overlay for unlocked bar for user positionning
+	parent.overlay = parent.overlay or CreateFrame("Button", "Overlay"..parent:GetName(), parent)
+	local overlay = parent.overlay
+	overlay:EnableMouse(true)
+	overlay:RegisterForDrag("LeftButton")
+	overlay:RegisterForClicks("LeftButtonUp")
+	overlay:SetBackdrop({
+		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+		tile = true,
+		tileSize = 16,
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		edgeSize = 16,
+		insets = {left = 5, right = 3, top = 3, bottom = 5}
+	})
+	overlay:SetBackdropColor(0, 1, 0, 0.5)
+	overlay:SetBackdropBorderColor(0.5, 0.5, 0, 0)
+
+	overlay:SetFrameLevel(parent:GetFrameLevel() + 10)
+	overlay:ClearAllPoints()
+	overlay:SetPoint(anchor,parent,anchor)
+	overlay:SetSize(parent:GetWidth(), parent:GetHeight())
+
+	overlay.anchor = overlay.anchor or overlay:CreateTexture(nil,"ARTWORK")
+	local overlayAnchor = overlay.anchor
+	overlayAnchor:SetSize(13,13)
+	overlayAnchor:SetTexture(XB.icons.anchor)
+	overlayAnchor:ClearAllPoints()
+	overlayAnchor:SetPoint(anchor,overlay,anchor)
+
+
+	if not overlay:GetScript("OnEnter") and overlay:GetScript("OnEnter")~= frameOnEnter then
+		overlay:SetScript("OnEnter", frameOnEnter)
+		overlay:SetScript("OnLeave", frameOnLeave)
+		overlay:SetScript("OnDragStart", frameOnDragStart)
+		overlay:SetScript("OnDragStop", function(self)
+			local parent = self:GetParent()
+			if parent.isMoving then
+				parent:StopMovingOrSizing()
+				savePosition(parent,module)
+				parent.isMoving = nil
+				self.anchor:ClearAllPoints()
+				self.anchor:SetPoint(module.settings.anchor,self,module.settings.anchor)
+			end
+		end)
+	end
+end
+
+function XB:SkinTooltip(frame, name)
+	if IsAddOnLoaded("ElvUI") or IsAddOnLoaded("Tukui") then
+		if frame.StripTextures then
+			frame:StripTextures()
+		end
+		if frame.SetTemplate then
+			frame:SetTemplate("Transparent")
+		end
+
+		local close = _G[name.."CloseButton"] or frame.CloseButton
+		if close and close.SetAlpha then
+			if ElvUI then
+				ElvUI[1]:GetModule('Skins'):HandleCloseButton(close)
+			end
+
+			if Tukui and Tukui[1] and Tukui[1].SkinCloseButton then
+				Tukui[1].SkinCloseButton(close)
+			end
+			close:SetAlpha(1)
+		end
+	end
+end
+
+--[[
 XIVBar.L = L
 
 XIVBar.constants = {
@@ -75,7 +369,6 @@ XIVBar.defaults = {
     }
 };
 
-XIVBar.LSM = LibStub('LibSharedMedia-3.0');
 
 function XIVBar:OnInitialize()
     self.db = LibStub("AceDB-3.0"):New("XIVBarDB", self.defaults)
@@ -205,67 +498,20 @@ function XIVBar:CreateMainBar()
     if self.frames.bar == nil then
         self:RegisterFrame('bar', CreateFrame("FRAME", "XIV_Databar", UIParent))
         self.frames.bgTexture = self.frames.bgTexture or self.frames.bar:CreateTexture(nil, "BACKGROUND")
+		XIVBar:GetFrame("bar").enableMouse = true
+		XIVBar:GetFrame("bar").clampedToScreen = true
+		XIVBar:GetFrame("bar").movable = true
+		XIVBar:GetFrame("bar"):SetScript("OnMouseDown",function()
+			self.frames.bgTexture:SetColorTexture(0,1,0,0.4);
+			local curX, curY = GetCursorPosition()
+			local uiScale = UIParent:GetEffectiveScale()
+			curX, curY = curX / uiScale, curY / uiScale
+			local anchor,object,relativeToObj,x,y = self.frames.bar:GetPoint()
+			self.frames.bar:SetPoint(anchor,object,relativeToObj,curX,curY)
+		end)
     end
 end
 
-function XIVBar:HideBarEvent()
-	local bar = self:GetFrame("bar")
-	local vehiculeIsFlight = false;
-
-    bar:UnregisterAllEvents()
-	bar.OnEvent = nil
-	bar:RegisterEvent("PET_BATTLE_OPENING_START")
-	bar:RegisterEvent("PET_BATTLE_CLOSE")
-    bar:RegisterEvent("TAXIMAP_CLOSED")
-    bar:RegisterEvent("VEHICLE_POWER_SHOW")
-
-	bar:SetScript("OnEvent", function(_, event, ...)
-        if self.db.profile.general.barFlightHide then
-            if event == "VEHICLE_POWER_SHOW" then
-                if not XIV_Databar:IsVisible() then
-                    XIV_Databar:Show()
-                end
-                if vehiculeIsFlight and XIV_Databar:IsVisible() then
-                    XIV_Databar:Hide()
-                end
-            end
-
-            if event == "TAXIMAP_CLOSED" then
-                vehiculeIsFlight = true
-                C_Timer.After(1,function()
-                    vehiculeIsFlight = false
-                end)
-            end
-        end
-
-		if event=="PET_BATTLE_OPENING_START" and XIV_Databar:IsVisible() then
-			XIV_Databar:Hide()
-		end
-		if event=="PET_BATTLE_CLOSE" and not XIV_Databar:IsVisible() then
-			XIV_Databar:Show()
-		end
-	end)
-
-	if self.db.profile.general.barCombatHide then
-		bar:RegisterEvent("PLAYER_REGEN_ENABLED")
-		bar:RegisterEvent("PLAYER_REGEN_DISABLED")
-
-		bar:HookScript("OnEvent", function(_, event, ...)
-			if event=="PLAYER_REGEN_DISABLED" and XIV_Databar:IsVisible() then
-				XIV_Databar:Hide()
-			end
-			if event=="PLAYER_REGEN_ENABLED" and not XIV_Databar:IsVisible() then
-				XIV_Databar:Show()
-			end
-		end)
-	else
-		if bar:IsEventRegistered("PLAYER_REGEN_ENABLED") then
-			bar:UnregisterEvent("PLAYER_REGEN_ENABLED")
-		elseif bar:IsEventRegistered("PLAYER_REGEN_DISABLED") then
-			bar:UnregisterEvent("PLAYER_REGEN_DISABLED")
-		end
-	end
-end
 
 function XIVBar:GetHeight()
     return (self.db.profile.text.fontSize * 2) + self.db.profile.general.barPadding
@@ -351,51 +597,6 @@ function XIVBar:PrintTable(table, prefix)
             print(prefix..'.'..k..': '..tostring(v))
         end
     end
-end
-
-function OffsetUI()
-    local inOrderHall = C_Garrison.IsPlayerInGarrison(LE_GARRISON_TYPE_7_0);
-
-    local offset=XIVBar.frames.bar:GetHeight();
-    local buffsAreaTopOffset = offset;
-
-    if (PlayerFrame and not PlayerFrame:IsUserPlaced() and not PlayerFrame_IsAnimatedOut(PlayerFrame)) then
-        PlayerFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -19, -4 - offset)
-    end
-
-    if (TargetFrame and not TargetFrame:IsUserPlaced()) then
-        TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -4 - offset);
-    end
-
-    local ticketStatusFrameShown = TicketStatusFrame and TicketStatusFrame:IsShown();
-    local gmChatStatusFrameShown = GMChatStatusFrame and GMChatStatusFrame:IsShown();
-    if (ticketStatusFrameShown) then
-        TicketStatusFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -180, 0 - offset);
-        buffsAreaTopOffset = buffsAreaTopOffset + TicketStatusFrame:GetHeight();
-    end
-    if (gmChatStatusFrameShown) then
-        GMChatStatusFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -170, -5 - offset);
-        buffsAreaTopOffset = buffsAreaTopOffset + GMChatStatusFrame:GetHeight() + 5;
-    end
-    if (not ticketStatusFrameShown and not gmChatStatusFrameShown) then
-        buffsAreaTopOffset = buffsAreaTopOffset + 13;
-    end
-
-	if(not IsAddOnLoaded("ElvUI") and not MinimapCluster:IsUserPlaced() and MinimapCluster:GetTop()-UIParent:GetHeight() < 1) then
-		MinimapCluster:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0 - buffsAreaTopOffset);
-	end
-		
-    BuffFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -205, 0 - buffsAreaTopOffset);
-end
-
-function XIVBar:ResetUI()
-	if topOffsetBlizz then
-		UIParent_UpdateTopFramePositions = topOffsetBlizz
-	end
-	UIParent_UpdateTopFramePositions();
-	if not MinimapCluster:IsUserPlaced() then
-		MinimapCluster:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0);
-	end
 end
 
 function XIVBar:GetGeneralOptions()
@@ -672,3 +873,4 @@ function XIVBar:GetTextColorOptions()
         }
     }
 end
+]]
