@@ -40,9 +40,34 @@ local function refreshOptions()
 	mb_config.general.args.height.max = round(BarFrame:GetHeight())
 end
 
-local function menuButtonClickFunction(button, modifier_setting, click_setting, function_name)
-	local modifier = modifier_setting == 1 or (modifier_setting == 2 and IsShiftKeyDown or (modifier_setting == 3 and IsAltKeyDown or IsControlKeyDown))
-	local click = click_setting == 1 and "LeftButton" or "RightButton"
+local function clickFunctions(self,button,down)
+	if InCombatLockdown() and not Mb.settings.combatEn then return end
+
+	-- ReloadUI function
+	local modifierR = Mb.settings.modReload == 1 or (Mb.settings.modReload == 2 and IsShiftKeyDown or (Mb.settings.modReload == 3 and IsAltKeyDown or IsControlKeyDown))
+	local clickR = Mb.settings.clickReload == 1 and "LeftButton" or "RightButton"
+	if type(modifierR)=="function" then
+		if modifierR() and button == clickR then
+			ReloadUI()
+		end
+	else
+		if not IsModifierKeyDown() and button == clickR then
+			ReloadUI()
+		end
+	end
+
+	-- GameMenu function
+	local modifierM = Mb.settings.modMenu == 1 or (Mb.settings.modMenu == 2 and IsShiftKeyDown or (Mb.settings.modMenu == 3 and IsAltKeyDown or IsControlKeyDown))
+	local clickM = Mb.settings.clickMenu == 1 and "LeftButton" or "RightButton"
+	if type(modifierM)=="function" then
+		if modifierM() and button == clickM then
+			ToggleFrame(GameMenuFrame); return
+		end
+	else
+		if not IsModifierKeyDown() and button == clickM then
+			ToggleFrame(GameMenuFrame); return
+		end
+	end
 
 	if type(modifier) == "function" then
 		if modifier() and button == click then
