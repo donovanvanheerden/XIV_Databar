@@ -1,7 +1,7 @@
-## Interface: 80200
+## Interface: 80300
 ## Title: XIV_Databar
-## Author: Donovan van Heerden
-## Version: 2.0.16
+## Author: DocMad
+## Version: 3.0.0
 ## Notes: XIV Databar forked from https://github.com/Mikeprod/XIV_Databar
 ## SavedVariables: XIVBarDB
 ## X-Issues: https://github.com/donovanvanheerden/XIV_Databar/issues
@@ -11,7 +11,7 @@ embeds.xml
 db\ports.lua
 #locales\locales.xml
 core.lua
-Config.lua
-Bar.lua
+config.lua
+bar.lua
 modules\load_modules.xml
 
